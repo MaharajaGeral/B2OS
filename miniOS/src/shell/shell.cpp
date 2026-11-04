@@ -1,21 +1,25 @@
 #include "shell.h"
 #include "logo.h"
 
+static const ShellIO* g_io = nullptr;
+
+// Dipakai logo.cpp dan file lain untuk mencetak lewat I/O yang aktif
+void shell_write(const char* text) {
+    if (g_io && g_io->write) g_io->write(text);
+}
+
 void shell_run(const ShellIO* io) {
-    show_logo();
+    g_io = io;   // harus diset SEBELUM show_logo()
 
     // Memastikan fungsi I/O tersedia
-    if (
-        !io ||
-        !io->write ||
-        !io->read_line
-    ) {
+    if (!io || !io->write || !io->read_line) {
         return;
     }
 
+    show_logo();
+
     char input[SHELL_BUFFER_SIZE];
 
-    // Pesan pembuka
     io->write(
         "\n"
         "================================\n"
@@ -24,29 +28,19 @@ void shell_run(const ShellIO* io) {
         "Type 'help' to see available commands.\n\n"
     );
 
-    //Status CLI
     bool running = true;
 
-    // Loop utama CLI
     while (running) {
-
         io->write("B2OS@localhost:~$ ");
 
-        // Membaca input pengguna
-        int result = io->read_line(
-            input,
-            SHELL_BUFFER_SIZE
-        );
+        int result = io->read_line(input, SHELL_BUFFER_SIZE);
 
-        // Menghentikan shell jika input berakhir
-        if (result <= 0) {
+        // -1 = input berakhir. Baris kosong (0) tetap lanjut.
+        if (result < 0) {
             break;
         }
 
-        // Memastikan string berakhir dengan null
         input[SHELL_BUFFER_SIZE - 1] = '\0';
-
-        // Menjalankan perintah
         shell_execute_command(input, io, &running);
     }
 }
