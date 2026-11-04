@@ -1,4 +1,4 @@
-# ===== NusaOS Makefile =====
+# ===== B2OS Makefile =====
 CXX := g++
 LD  := ld
 
@@ -32,7 +32,7 @@ iso: $(BUILD)/kernel.elf
 	@mkdir -p $(BUILD)/iso/boot/grub
 	cp $(BUILD)/kernel.elf $(BUILD)/iso/boot/kernel.elf
 	cp grub/grub.cfg $(BUILD)/iso/boot/grub/grub.cfg
-	grub-mkrescue -o $(BUILD)/nusaos.iso $(BUILD)/iso
+	grub-mkrescue -o $(BUILD)/b2os.iso $(BUILD)/iso
 
 # Jalankan cepat saat development
 run: $(BUILD)/kernel.elf
@@ -40,7 +40,7 @@ run: $(BUILD)/kernel.elf
 
 # Jalankan lewat ISO GRUB
 run-iso: iso
-	qemu-system-i386 -cdrom $(BUILD)/nusaos.iso -serial stdio
+	qemu-system-i386 -cdrom $(BUILD)/b2os.iso -serial stdio
 
 # Debug: terminal lain -> gdb build/kernel.elf, lalu (gdb) target remote :1234
 debug: $(BUILD)/kernel.elf
