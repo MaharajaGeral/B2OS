@@ -1,12 +1,11 @@
-// kernel.cpp - kernel_main + I/O dasar untuk shell (kriteria 1)
+// kernel.cpp - kernel_main + I/O dasar untuk shell (kriteria 1) + interrupt (persiapan kriteria 3)
+#include "kernel/types.h"
+#include "kernel/io.h"
+#include "kernel/kernel.h"
+#include "kernel/gdt.h"
+#include "kernel/idt.h"
+#include "kernel/timer.h"
 #include "shell/shell.h"
-
-typedef unsigned char  u8;
-typedef unsigned short u16;
-typedef unsigned int   u32;
-
-static inline void outb(u16 port, u8 v) { asm volatile("outb %0, %1" : : "a"(v), "Nd"(port)); }
-static inline u8 inb(u16 port) { u8 r; asm volatile("inb %1, %0" : "=a"(r) : "Nd"(port)); return r; }
 
 // ---------- Serial COM1 ----------
 static void serial_init() {
@@ -48,6 +47,14 @@ static void putc_both(char c) {
     serial_putc(c);
 }
 
+// ---------- Cetak sederhana untuk bagian kernel lain ----------
+void kernel_print(const char* s) { while (*s) putc_both(*s++); }
+
+void kernel_print_hex(u32 v) {
+    kernel_print("0x");
+    for (int i = 28; i >= 0; i -= 4) putc_both("0123456789abcdef"[(v >> i) & 0xF]);
+}
+
 // ---------- Input: keyboard PS/2 (polling) + serial ----------
 static const char NORMAL[] =
     "\0\033" "1234567890-=\b\t" "qwertyuiop[]\n\0" "asdfghjkl;'`\0\\" "zxcvbnm,./\0*\0 ";
@@ -82,7 +89,6 @@ static char read_char() {
 
 // ---------- Tiga fungsi yang diminta shell (ShellIO) ----------
 static void io_write(const char* s) { while (*s) putc_both(*s++); }
-
 static void io_clear() { vga_clear(); }
 
 static int io_read_line(char* buf, unsigned long cap) {
@@ -104,6 +110,12 @@ extern "C" void kernel_main(u32 magic, u32 info) {
     (void)magic; (void)info;
     serial_init();
     vga_clear();
-    shell_run(&io);                 // jalankan CLI temanmu
-    for (;;) asm volatile("hlt");   // kalau shell berhenti
+
+    gdt::init();      kernel_print("[ OK ] GDT\n");
+    idt::init();      kernel_print("[ OK ] IDT + PIC\n");
+    timer::init();    kernel_print("[ OK ] Timer 100 Hz\n");
+    asm volatile("sti");                            // mulai menerima interrupt
+
+    shell_run(&io);                 // jalankan CLI
+    for (;;) asm volatile("hlt");   // kalau shell berhenti, timer tetap berdetak
 }
