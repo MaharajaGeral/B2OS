@@ -1,0 +1,1 @@
+// Semaphore (kriteria 4)
