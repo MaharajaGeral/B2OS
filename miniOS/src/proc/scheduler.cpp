@@ -1,4 +1,3 @@
-// Round Robin preemptive + context switching (kriteria 3)
 // Scheduler Round Robin preemptive.
 #include "proc/scheduler.h"
 #include "kernel/cpu.h"
@@ -90,6 +89,30 @@ void sched::exit() {
     thread::set_state(cur, ThreadState::TERMINATED);
     schedule();
     for (;;) asm volatile("hlt");                      // tidak pernah tercapai
+}
+
+// ---------- dasar untuk mutex dan semaphore ----------
+
+// Thread sekarang menunggu sesuatu (bukan tidur berbatas waktu), lalu CPU diberikan ke thread lain.
+// Thread ini baru jalan lagi setelah ada yang memanggil unblock() untuknya.
+void sched::block() {
+    cur->sleeping = false;
+    thread::set_state(cur, ThreadState::WAITING);
+    schedule();
+}
+
+void sched::unblock(Thread* t) {
+    if (t->state == ThreadState::WAITING && !t->sleeping)
+        thread::set_state(t, ThreadState::READY);
+}
+
+void sched::kill(Thread* t) {
+    u32 f = irq_save();
+    if (t && t != cur && t->state != ThreadState::UNUSED && t->state != ThreadState::TERMINATED) {
+        t->sleeping = false;
+        thread::set_state(t, ThreadState::TERMINATED);
+    }
+    irq_restore(f);
 }
 
 static void print_padded(const char* s, int width) {
