@@ -1,4 +1,5 @@
 #include "shell.h"
+extern "C" void shutdown_system();
 
 // Membandingkan dua string
 static bool command_matches(
@@ -62,7 +63,11 @@ static void command_echo(
 
 // Keluar dari shell
 static void command_exit(const ShellIO* io) {
-    io->write("Exiting B2OS shell...\n");
+    io->write(
+        "\nExiting B2OS shell...\n"
+        "Shutting down system.\n"
+    );
+    shutdown_system();
 }
 
 // Memproses perintah
@@ -155,10 +160,6 @@ void shell_execute_command(
         command_matches(command, command_length, "exit")
     ) {
         command_exit(io);
-
-        if (running) {
-            *running = false;
-        }
     }
 
     // COMMAND NOT FOUND

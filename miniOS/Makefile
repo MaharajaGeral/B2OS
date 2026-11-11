@@ -9,6 +9,7 @@ ASFLAGS  := -m32
 LDFLAGS  := -m elf_i386 -T linker.ld -z noexecstack
 
 BUILD   := build
+QEMU_EXIT := -device isa-debug-exit,iobase=0xf4,iosize=0x04
 CPP_SRC := $(shell find src -name '*.cpp')
 ASM_SRC := $(shell find src -name '*.S')
 OBJS    := $(patsubst src/%.cpp,$(BUILD)/%.o,$(CPP_SRC)) \
@@ -36,16 +37,18 @@ iso: $(BUILD)/kernel.elf
 
 # Jalankan cepat saat development
 run: $(BUILD)/kernel.elf
-	qemu-system-i386 -kernel $(BUILD)/kernel.elf -serial stdio
+	qemu-system-i386 -kernel $(BUILD)/kernel.elf \
+		-serial stdio $(QEMU_EXIT)
 
 # Jalankan lewat ISO GRUB
 run-iso: iso
-	qemu-system-i386 -cdrom $(BUILD)/b2os.iso -serial stdio
+	qemu-system-i386 -cdrom $(BUILD)/b2os.iso \
+		-serial stdio $(QEMU_EXIT)
 
-# Debug: terminal lain -> gdb build/kernel.elf, lalu (gdb) target remote :1234
+# Debug
 debug: $(BUILD)/kernel.elf
-	qemu-system-i386 -kernel $(BUILD)/kernel.elf -serial stdio -s -S
-
+	qemu-system-i386 -kernel $(BUILD)/kernel.elf \
+		-serial stdio -s -S $(QEMU_EXIT)
 clean:
 	rm -rf $(BUILD)
 
