@@ -25,9 +25,19 @@ static const int W = 80, H = 25;
 static int row = 0, col = 0;
 static const u8 COLOR = 0x0A;                       // hijau terang
 
+// Pindahkan kursor hardware (kedip-kedip) ke posisi row/col saat ini
+static void update_cursor() {
+    u16 pos = (u16)(row * W + col);
+    outb(0x3D4, 0x0F);
+    outb(0x3D5, (u8)(pos & 0xFF));
+    outb(0x3D4, 0x0E);
+    outb(0x3D5, (u8)((pos >> 8) & 0xFF));
+}
+
 static void vga_clear() {
     for (int i = 0; i < W * H; i++) VGA[i] = (u16)' ' | (COLOR << 8);
     row = 0; col = 0;
+    update_cursor();
 }
 static void vga_scroll() {
     for (int i = 0; i < W * (H - 1); i++) VGA[i] = VGA[i + W];
@@ -41,6 +51,7 @@ static void vga_putc(char c) {
     else                { VGA[row * W + col] = (u16)(u8)c | (COLOR << 8); col++; }
     if (col >= W) { col = 0; row++; }
     if (row >= H) vga_scroll();
+    update_cursor();                                // <- kursor ikut bergerak
 }
 
 static void putc_both(char c) {
