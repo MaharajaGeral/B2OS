@@ -31,10 +31,10 @@ static void command_help(const ShellIO* io) {
         "  version  - Show OS version\n"
         "  echo     - Display a message\n"
         "  ps          - Show thread list and states\n"
-        "  demo_thread - Demo 2 threads and state changes\n"
-        "  demo_sched  - Demo preemptive scheduling\n"
-        "  demo_race   - Demo race condition vs mutex\n"
-        "  demo_sem    - Demo semaphore (2 slots, 4 threads)\n"
+        "  thread   - Demo 2 threads and state changes\n"
+        "  sched    - Demo preemptive scheduling\n"
+        "  race     - Demo race condition vs mutex\n"
+        "  sem      - Demo semaphore (2 slots, 4 threads)\n"
         "  exit     - Exit the shell\n"
         "\n"
     );
@@ -176,34 +176,34 @@ void shell_execute_command(
         show_threads();
     }
 
-    // DEMO_THREAD
+        // THREAD
     else if (
-        command_length == 11 &&
-        command_matches(command, command_length, "demo_thread")
+        command_length == 6 &&
+        command_matches(command, command_length, "thread")
     ) {
         demo_thread();
     }
 
-    // DEMO_SCHED
+    // SCHED
     else if (
-        command_length == 10 &&
-        command_matches(command, command_length, "demo_sched")
+        command_length == 5 &&
+        command_matches(command, command_length, "sched")
     ) {
         demo_sched();
     }
 
-    // DEMO_RACE
+    // RACE
     else if (
-        command_length == 9 &&
-        command_matches(command, command_length, "demo_race")
+        command_length == 4 &&
+        command_matches(command, command_length, "race")
     ) {
         demo_race();
     }
 
-    // DEMO_SEM
+    // SEM
     else if (
-        command_length == 8 &&
-        command_matches(command, command_length, "demo_sem")
+        command_length == 3 &&
+        command_matches(command, command_length, "sem")
     ) {
         demo_sem();
     }
