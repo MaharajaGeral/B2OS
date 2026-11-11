@@ -5,6 +5,8 @@
 #include "kernel/gdt.h"
 #include "kernel/idt.h"
 #include "kernel/timer.h"
+#include "kernel/cpu.h"
+#include "proc/scheduler.h"
 #include "shell/shell.h"
 
 // ---------- Serial COM1 ----------
@@ -48,11 +50,27 @@ static void putc_both(char c) {
 }
 
 // ---------- Cetak sederhana untuk bagian kernel lain ----------
-void kernel_print(const char* s) { while (*s) putc_both(*s++); }
+// Interrupt dimatikan sebentar supaya teks dari beberapa thread tidak tercampur.
+void kernel_print(const char* s) {
+    u32 f = irq_save();
+    while (*s) putc_both(*s++);
+    irq_restore(f);
+}
 
 void kernel_print_hex(u32 v) {
-    kernel_print("0x");
+    u32 f = irq_save();
+    putc_both('0'); putc_both('x');
     for (int i = 28; i >= 0; i -= 4) putc_both("0123456789abcdef"[(v >> i) & 0xF]);
+    irq_restore(f);
+}
+
+void kernel_print_dec(u32 v) {
+    char t[11]; int i = 0;
+    if (v == 0) t[i++] = '0';
+    while (v) { t[i++] = (char)('0' + v % 10); v /= 10; }
+    u32 f = irq_save();
+    while (i--) putc_both(t[i]);
+    irq_restore(f);
 }
 
 // ---------- Input: keyboard PS/2 (polling) + serial ----------
@@ -88,7 +106,7 @@ static char read_char() {
 }
 
 // ---------- Tiga fungsi yang diminta shell (ShellIO) ----------
-static void io_write(const char* s) { while (*s) putc_both(*s++); }
+static void io_write(const char* s) { kernel_print(s); }
 static void io_clear() { vga_clear(); }
 
 static int io_read_line(char* buf, unsigned long cap) {
@@ -114,6 +132,7 @@ extern "C" void kernel_main(u32 magic, u32 info) {
     gdt::init();      kernel_print("[ OK ] GDT\n");
     idt::init();      kernel_print("[ OK ] IDT + PIC\n");
     timer::init();    kernel_print("[ OK ] Timer 100 Hz\n");
+    sched::init();    kernel_print("[ OK ] Scheduler Round Robin\n");
     asm volatile("sti");                            // mulai menerima interrupt
 
     shell_run(&io);                 // jalankan CLI

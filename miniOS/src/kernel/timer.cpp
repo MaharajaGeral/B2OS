@@ -2,6 +2,7 @@
 #include "kernel/timer.h"
 #include "kernel/idt.h"
 #include "kernel/io.h"
+#include "proc/scheduler.h"
 
 static volatile u32 tick_count = 0;
 
@@ -24,7 +25,7 @@ static void draw_uptime() {
 static void on_tick(Regs*) {
     tick_count = tick_count + 1;
     if (tick_count % timer::HZ == 0) draw_uptime();
-    // Langkah berikutnya (scheduler): di sini nanti dipanggil sched::tick()
+    sched::tick();   // scheduler: bangunkan thread tidur, dan paksa pindah thread bila jatah habis
 }
 
 void timer::init() {
