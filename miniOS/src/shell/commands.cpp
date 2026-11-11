@@ -1,4 +1,5 @@
 #include "shell.h"
+#include "proc/demo.h"
 extern "C" void shutdown_system();
 
 // Membandingkan dua string
@@ -29,6 +30,11 @@ static void command_help(const ShellIO* io) {
         "  about    - Information about B2OS\n"
         "  version  - Show OS version\n"
         "  echo     - Display a message\n"
+        "  ps          - Show thread list and states\n"
+        "  demo_thread - Demo 2 threads and state changes\n"
+        "  demo_sched  - Demo preemptive scheduling\n"
+        "  demo_race   - Demo race condition vs mutex\n"
+        "  demo_sem    - Demo semaphore (2 slots, 4 threads)\n"
         "  exit     - Exit the shell\n"
         "\n"
     );
@@ -40,7 +46,7 @@ static void command_about(const ShellIO* io) {
         "\n"
         "B2OS\n"
         "A simple operating system developed using C++.\n"
-        "Architecture: x86_64\n"
+        "Architecture: x86 (i386, 32-bit)\n"
         "\n"
     );
 }
@@ -160,6 +166,46 @@ void shell_execute_command(
         command_matches(command, command_length, "exit")
     ) {
         command_exit(io);
+    }
+
+    // PS
+    else if (
+        command_length == 2 &&
+        command_matches(command, command_length, "ps")
+    ) {
+        show_threads();
+    }
+
+    // DEMO_THREAD
+    else if (
+        command_length == 11 &&
+        command_matches(command, command_length, "demo_thread")
+    ) {
+        demo_thread();
+    }
+
+    // DEMO_SCHED
+    else if (
+        command_length == 10 &&
+        command_matches(command, command_length, "demo_sched")
+    ) {
+        demo_sched();
+    }
+
+    // DEMO_RACE
+    else if (
+        command_length == 9 &&
+        command_matches(command, command_length, "demo_race")
+    ) {
+        demo_race();
+    }
+
+    // DEMO_SEM
+    else if (
+        command_length == 8 &&
+        command_matches(command, command_length, "demo_sem")
+    ) {
+        demo_sem();
     }
 
     // COMMAND NOT FOUND
