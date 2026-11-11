@@ -1,1 +1,0 @@
-// memcpy, memset, strcmp, dst.
