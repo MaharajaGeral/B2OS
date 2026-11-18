@@ -1,5 +1,6 @@
 #include "shell.h"
 #include "proc/demo.h"
+#include "shell/args.h"
 extern "C" void shutdown_system();
 
 // Membandingkan dua string
@@ -67,6 +68,30 @@ static void command_echo(
     io->write("\n");
 }
 
+// Uji pengurai argumen: menampilkan tiap token (sementara, untuk pengetesan)
+static void command_args(const char* argument, const ShellIO* io) {
+    char tokens[ARGS_MAX_TOKENS][ARGS_TOKEN_SIZE];
+    int count = args_split(argument, tokens);
+
+    if (count < 0) {
+        io->write("Argumen terlalu banyak (maks 4) atau terlalu panjang (maks 31 karakter).\n");
+        return;
+    }
+
+    for (int i = 0; i < count; i++) {
+        io->write("  token ");
+        char number[2] = { (char)('1' + i), '\0' };
+        io->write(number);
+        io->write(": [");
+        io->write(tokens[i]);
+        io->write("]\n");
+    }
+
+    if (count == 0) {
+        io->write("  (tidak ada argumen)\n");
+    }
+}
+
 // Keluar dari shell
 static void command_exit(const ShellIO* io) {
     io->write(
@@ -82,6 +107,7 @@ void shell_execute_command(
     const ShellIO* io,
     bool* running
 ) {
+    (void)running;   // belum dipakai; disiapkan untuk perintah yang menghentikan shell
     if (!input || !io || !io->write) {
         return;
     }
@@ -206,6 +232,14 @@ void shell_execute_command(
         command_matches(command, command_length, "sem")
     ) {
         demo_sem();
+    }
+
+    // ARGS (uji pengurai argumen)
+    else if (
+        command_length == 4 &&
+        command_matches(command, command_length, "args")
+    ) {
+        command_args(input, io);
     }
 
     // COMMAND NOT FOUND
