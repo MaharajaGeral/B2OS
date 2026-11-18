@@ -92,6 +92,25 @@ static void command_args(const char* argument, const ShellIO* io) {
     }
 }
 
+// trace on|off : menyalakan/mematikan log perubahan status thread
+static void command_trace(const char* argument, const ShellIO* io) {
+    char tokens[ARGS_MAX_TOKENS][ARGS_TOKEN_SIZE];
+    int count = args_split(argument, tokens);
+
+    if (count == 1 && tokens[0][0] == 'o' && tokens[0][1] == 'n' && tokens[0][2] == '\0') {
+        trace_enable(true);
+        io->write("Trace thread: ON\n");
+    } else if (count == 1 && tokens[0][0] == 'o' && tokens[0][1] == 'f' &&
+               tokens[0][2] == 'f' && tokens[0][3] == '\0') {
+        trace_enable(false);
+        io->write("Trace thread: OFF\n");
+    } else if (count == 0) {
+        io->write(trace_enabled() ? "Trace thread: ON\n" : "Trace thread: OFF\n");
+    } else {
+        io->write("Pemakaian: trace on|off\n");
+    }
+}
+
 // Keluar dari shell
 static void command_exit(const ShellIO* io) {
     io->write(
@@ -232,6 +251,14 @@ void shell_execute_command(
         command_matches(command, command_length, "sem")
     ) {
         demo_sem();
+    }
+
+    // TRACE
+    else if (
+        command_length == 5 &&
+        command_matches(command, command_length, "trace")
+    ) {
+        command_trace(input, io);
     }
 
     // ARGS (uji pengurai argumen)
