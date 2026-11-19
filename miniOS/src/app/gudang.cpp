@@ -5,6 +5,7 @@
 #include "lib/string.h"
 #include "proc/scheduler.h"
 #include "sync/mutex.h"
+#include "sync/semaphore.h"
 
 namespace {
 
@@ -209,6 +210,56 @@ struct Tugas {
 Mutex g_mutex;                 // kunci "inventaris"
 u32   g_nomor = 1;             // penomoran petugas-N
 
+// ---------- Pencatat aktivitas: producer-consumer ----------
+const int ANTREAN_N   = 16;     // jumlah slot antrean
+const u32 CATATAN_MAX = 48;     // panjang satu catatan (termasuk '\0')
+
+char      g_antrean[ANTREAN_N][CATATAN_MAX];
+int       g_tulis = 0;          // slot tulis berikutnya
+int       g_baca  = 0;          // slot baca berikutnya
+Semaphore g_slot_kosong;        // berapa slot yang masih kosong
+Semaphore g_item_terisi;        // berapa catatan yang menunggu dibaca
+Mutex     g_mutex_antrean;      // melindungi indeks dan isi antrean
+
+const char* nama_aksi(Jenis j) {
+    switch (j) {
+        case T_TAMBAH: return "tambah";
+        case T_UBAH:   return "ubah";
+        case T_HAPUS:  return "hapus";
+        default:       return "baca";
+    }
+}
+
+// Producer: taruh satu catatan "<aksi> <nama>" ke antrean.
+void catat(const char* aksi, const char* nama) {
+    sem_wait(&g_slot_kosong);              // tunggu bila antrean penuh
+    mutex_lock(&g_mutex_antrean);
+    char* slot = g_antrean[g_tulis];
+    u32 n = 0;
+    for (u32 i = 0; aksi[i] && n + 1 < CATATAN_MAX; i++) slot[n++] = aksi[i];
+    if (n + 1 < CATATAN_MAX) slot[n++] = ' ';
+    for (u32 i = 0; nama[i] && n + 1 < CATATAN_MAX; i++) slot[n++] = nama[i];
+    slot[n] = '\0';
+    g_tulis = (g_tulis + 1) % ANTREAN_N;
+    mutex_unlock(&g_mutex_antrean);
+    sem_signal(&g_item_terisi);            // beri tahu consumer
+}
+
+// Consumer: thread latar yang mengambil catatan lalu mencetaknya lewat syslog.
+void pencatat_main(void*) {
+    for (;;) {
+        sem_wait(&g_item_terisi);          // tidur sampai ada catatan
+        char salinan[CATATAN_MAX];
+        mutex_lock(&g_mutex_antrean);
+        salin(salinan, CATATAN_MAX, g_antrean[g_baca]);
+        g_baca = (g_baca + 1) % ANTREAN_N;
+        mutex_unlock(&g_mutex_antrean);
+        sem_signal(&g_slot_kosong);        // slot kembali kosong
+        syslog::log_s("APP", "catatan:", salinan);
+    }
+}
+// ---------- akhir pencatat ----------
+
 int kerja_tambah(const Tugas* t) {
     if (!nama_valid(t->nama) || sama(t->nama, LOG_FILE)) {
         kernel_print("Nama barang tidak valid (huruf kecil, angka, atau _ ; maks 31 karakter).\n");
@@ -311,6 +362,8 @@ void petugas_main(void* arg) {
     }
 
     mutex_unlock(&g_mutex);
+        if (t->hasil == FS_OK && t->jenis != T_DAFTAR && t->jenis != T_CARI)
+        catat(nama_aksi(t->jenis), t->nama);
     syslog::log_s("APP", "melepas mutex inventaris:", diri->name);
     sched::exit();
 }
@@ -438,9 +491,15 @@ void init() {
     if (sudah_init) return;
     sudah_init = true;
     mutex_init(&g_mutex, "inventaris");
+    sem_init(&g_slot_kosong, ANTREAN_N);
+    sem_init(&g_item_terisi, 0);
+    mutex_init(&g_mutex_antrean, "antrean");
     syslog::log("APP", "gudang siap (mutex inventaris dibuat)");
     if (!buat_thread_sistem("auditor", auditor_main)) {
         kernel_print("Peringatan: thread auditor gagal dibuat.\n");
+    }
+    if (!buat_thread_sistem("pencatat", pencatat_main)) {
+        kernel_print("Peringatan: thread pencatat gagal dibuat.\n");
     }
 }
 
