@@ -56,7 +56,14 @@ static char poll_keyboard() {
     if (!(inb(0x64) & 1)) return 0;
     u8 sc = inb(0x60);
     if (sc == 0xE0) { ext = true; return 0; }
-    if (ext)        { ext = false; return 0; }
+        if (ext) {
+        ext = false;
+        if (sc == 0x49) vga::scroll_view(10);    // Page Up: naik 10 baris
+        if (sc == 0x51) vga::scroll_view(-10);   // Page Down: turun 10 baris
+        if (sc == 0x48) vga::scroll_view(1);     // Panah atas: naik 1 baris
+        if (sc == 0x50) vga::scroll_view(-1);    // Panah bawah: turun 1 baris
+        return 0;
+    }
     if (sc == 0x2A || sc == 0x36) { shift = true;  return 0; }
     if (sc == 0xAA || sc == 0xB6) { shift = false; return 0; }
     if (sc & 0x80) return 0;
