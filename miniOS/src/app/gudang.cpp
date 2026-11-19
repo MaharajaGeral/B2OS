@@ -344,6 +344,92 @@ int jalankan(Tugas* t) {
     return t->hasil;
 }
 
+// ---------- Tahap 3: auditor stok (thread latar) ----------
+const u32 STOK_MENIPIS = 5;     // peringatan bila stok di bawah angka ini
+
+struct Laporan {                // barang yang sudah dilaporkan menipis
+    bool dipakai;
+    bool terlihat;              // ditemukan pada pemeriksaan ini
+    char nama[FS_NAME_MAX];
+    u32  stok;                  // stok saat terakhir dilaporkan
+};
+Laporan g_lapor[FS_MAX_FILES];
+
+// Cari catatan laporan untuk nama; -1 bila belum ada.
+int cari_laporan(const char* nama) {
+    for (int i = 0; i < FS_MAX_FILES; i++) {
+        if (g_lapor[i].dipakai && sama(g_lapor[i].nama, nama)) return i;
+    }
+    return -1;
+}
+
+void peringatkan(const char* nama, u32 stok) {
+    kernel_print("[AUDIT] stok menipis: "); kernel_print(nama);
+    kernel_print(" ("); kernel_print_dec(stok); kernel_print(")\n");
+}
+
+// Satu putaran pemeriksaan. Dipanggil dengan mutex inventaris terkunci.
+void audit_sekali() {
+    for (int i = 0; i < FS_MAX_FILES; i++) g_lapor[i].terlihat = false;
+
+    for (int i = 0; i < FS_MAX_FILES; i++) {
+        const FsFile* f = fs::at(i);
+        if (!f || sama(f->name, LOG_FILE)) continue;
+
+        char isi[ISI_MAX];
+        char rak[RAK_MAX];
+        u32  stok = 0;
+        if (baca_isi(f->name, isi) < 0) continue;
+        if (!urai_isi(isi, &stok, rak, RAK_MAX)) continue;
+        if (stok >= STOK_MENIPIS) continue;
+
+        int k = cari_laporan(f->name);
+        if (k >= 0) {
+            g_lapor[k].terlihat = true;
+            if (g_lapor[k].stok != stok) {          // stok berubah: lapor lagi
+                g_lapor[k].stok = stok;
+                peringatkan(f->name, stok);
+            }
+        } else {
+            int bebas = -1;
+            for (int j = 0; j < FS_MAX_FILES; j++) {
+                if (!g_lapor[j].dipakai) { bebas = j; break; }
+            }
+            if (bebas >= 0) {
+                g_lapor[bebas].dipakai  = true;
+                g_lapor[bebas].terlihat = true;
+                g_lapor[bebas].stok     = stok;
+                salin(g_lapor[bebas].nama, FS_NAME_MAX, f->name);
+            }
+            peringatkan(f->name, stok);
+        }
+    }
+
+    // Barang yang sudah pulih atau dihapus dilupakan, supaya bisa dilaporkan lagi nanti.
+    for (int i = 0; i < FS_MAX_FILES; i++) {
+        if (g_lapor[i].dipakai && !g_lapor[i].terlihat) g_lapor[i].dipakai = false;
+    }
+}
+
+// Isi thread auditor: tiap 5 detik periksa semua barang di bawah kunci inventaris.
+void auditor_main(void*) {
+    for (int i = 0; i < FS_MAX_FILES; i++) g_lapor[i].dipakai = false;
+    for (;;) {
+        sched::sleep_ms(5000);
+        syslog::log("APP", "auditor menunggu mutex inventaris");
+        mutex_lock(&g_mutex);
+        audit_sekali();
+        mutex_unlock(&g_mutex);
+        syslog::log("APP", "auditor selesai memeriksa stok");
+    }
+}
+
+// Thread latar (is_system = true: tidak dihitung user_threads_alive, tidak muncul di trace).
+// Sementara memakai thread::alloc langsung; ganti ke sched::create_system bila sudah ada.
+Thread* buat_thread_sistem(const char* nama, ThreadEntry fn) {
+    return thread::alloc(nama, fn, nullptr, true);
+}
+// ---------- akhir auditor ----------
 }  // namespace
 
 namespace gudang {
@@ -353,6 +439,9 @@ void init() {
     sudah_init = true;
     mutex_init(&g_mutex, "inventaris");
     syslog::log("APP", "gudang siap (mutex inventaris dibuat)");
+    if (!buat_thread_sistem("auditor", auditor_main)) {
+        kernel_print("Peringatan: thread auditor gagal dibuat.\n");
+    }
 }
 
 int tambah(const char* nama, u32 stok, const char* rak) {
@@ -409,5 +498,5 @@ void cari(const char* kata) {
     }
     jalankan(&t);
 }
-
 }  // namespace gudang
+
