@@ -1,6 +1,8 @@
 #include "shell.h"
 #include "proc/demo.h"
 #include "shell/args.h"
+#include "fs/fs.h"
+#include "app/gudang.h"
 extern "C" void shutdown_system();
 
 // Membandingkan dua string
@@ -21,7 +23,130 @@ static bool command_matches(
 
     return i == length && expected[i] == '\0';
 }
+// Mengubah teks angka menjadi u32
+static bool parse_u32(const char* text, u32* result) {
+    if (!text || !result || *text == '\0') {
+        return false;
+    }
 
+    u32 value = 0;
+
+    while (*text) {
+        if (*text < '0' || *text > '9') {
+            return false;
+        }
+
+        u32 digit = (u32)(*text - '0');
+
+        if (value > (0xFFFFFFFFu - digit) / 10) {
+            return false;
+        }
+
+        value = value * 10 + digit;
+        text++;
+    }
+
+    *result = value;
+    return true;
+}
+// Menambahkan barang ke inventaris gudang
+static void command_tambah(const char* argument, const ShellIO* io) {
+    char tokens[ARGS_MAX_TOKENS][ARGS_TOKEN_SIZE];
+    int count = args_split(argument, tokens);
+
+    if (count != 3) {
+        io->write("Pemakaian: tambah <nama> <stok> <rak>\n");
+        return;
+    }
+
+    u32 stok;
+
+    if (!parse_u32(tokens[1], &stok)) {
+        io->write("Stok harus berupa angka yang valid.\n");
+        return;
+    }
+
+    int result = gudang::tambah(tokens[0], stok, tokens[2]);
+
+    if (result == FS_OK) {
+        io->write("Barang berhasil ditambahkan.\n");
+    } else if (result == FS_EEXIST) {
+        io->write("Barang sudah terdaftar.\n");
+    } else if (result == FS_ENOMEM || result == FS_EFULL) {
+        io->write("Penyimpanan gudang penuh.\n");
+    } else {
+        io->write("Gagal menambahkan barang.\n");
+    }
+}
+// Menampilkan seluruh barang di gudang
+static void command_daftar(const ShellIO* io) {
+    io->write("\n=== DAFTAR BARANG GUDANG ===\n");
+
+    gudang::daftar();
+
+    io->write("============================\n\n");
+}
+// Mencari barang berdasarkan nama
+static void command_cari(const char* argument, const ShellIO* io) {
+    char tokens[ARGS_MAX_TOKENS][ARGS_TOKEN_SIZE];
+    int count = args_split(argument, tokens);
+
+    if (count != 1) {
+        io->write("Pemakaian: cari <nama>\n");
+        return;
+    }
+
+    io->write("\n=== HASIL PENCARIAN ===\n");
+    gudang::cari(tokens[0]);
+    io->write("=======================\n\n");
+}
+// Mengubah jumlah stok barang
+static void command_stok(const char* argument, const ShellIO* io) {
+    char tokens[ARGS_MAX_TOKENS][ARGS_TOKEN_SIZE];
+    int count = args_split(argument, tokens);
+
+    if (count != 2) {
+        io->write("Pemakaian: stok <nama> <jumlah_baru>\n");
+        return;
+    }
+
+    u32 stok;
+
+    if (!parse_u32(tokens[1], &stok)) {
+        io->write("Stok harus berupa angka yang valid.\n");
+        return;
+    }
+
+    int result = gudang::ubah_stok(tokens[0], stok);
+
+    if (result == FS_OK) {
+        io->write("Stok barang berhasil diperbarui.\n");
+    } else if (result == FS_ENOENT) {
+        io->write("Barang tidak ditemukan.\n");
+    } else {
+        io->write("Gagal memperbarui stok barang.\n");
+    }
+}
+// Menghapus barang dari inventaris gudang
+static void command_hapus(const char* argument, const ShellIO* io) {
+    char tokens[ARGS_MAX_TOKENS][ARGS_TOKEN_SIZE];
+    int count = args_split(argument, tokens);
+
+    if (count != 1) {
+        io->write("Pemakaian: hapus <nama>\n");
+        return;
+    }
+
+    int result = gudang::hapus(tokens[0]);
+
+    if (result == FS_OK) {
+        io->write("Barang berhasil dihapus.\n");
+    } else if (result == FS_ENOENT) {
+        io->write("Barang tidak ditemukan.\n");
+    } else {
+        io->write("Gagal menghapus barang.\n");
+    }
+}
 // Menampilkan daftar perintah
 static void command_help(const ShellIO* io) {
     io->write(
@@ -37,6 +162,12 @@ static void command_help(const ShellIO* io) {
         "  race     - Demo race condition vs mutex\n"
         "  sem      - Demo semaphore (2 slots, 4 threads)\n"
         "  exit     - Exit the shell\n"
+        "  fs       - Test RAM filesystem operations\n"
+        "  tambah   - Add warehouse item (name stock rack)\n"
+        "  daftar   - Show warehouse inventory\n"
+        "  cari     - Search warehouse item\n"
+        "  stok     - Update item stock\n"
+        "  hapus    - Delete warehouse item\n"
         "\n"
     );
 }
@@ -109,6 +240,91 @@ static void command_trace(const char* argument, const ShellIO* io) {
     } else {
         io->write("Pemakaian: trace on|off\n");
     }
+}
+
+// Menguji operasi dasar RAMFS
+static void command_fs(const ShellIO* io) {
+    char buffer[128] = {};
+
+    io->write("\n=== RAMFS TEST ===\n");
+
+    // Membersihkan file sisa pengujian sebelumnya
+    fs::remove("test.txt");
+
+    // 1. Membuat file
+    io->write("[1] Create file: ");
+
+    int result = fs::create("test.txt", "B2OS RAMFS Test");
+
+    if (result == FS_OK) {
+        io->write("SUCCESS\n");
+    } else {
+        io->write("FAILED\n");
+        return;
+    }
+
+    // 2. Membaca file
+    io->write("[2] Read file: ");
+
+    result = fs::read("test.txt", buffer, sizeof(buffer));
+
+    if (result >= 0) {
+        io->write("SUCCESS\n");
+        io->write("    Content: ");
+        io->write(buffer);
+        io->write("\n");
+    } else {
+        io->write("FAILED\n");
+        return;
+    }
+
+    // 3. Mengubah isi file
+    io->write("[3] Write file: ");
+
+    result = fs::write("test.txt", "RAMFS successfully updated");
+
+    if (result == FS_OK) {
+        io->write("SUCCESS\n");
+    } else {
+        io->write("FAILED\n");
+        return;
+    }
+
+    // 4. Membaca kembali isi file
+    io->write("[4] Read updated file: ");
+
+    result = fs::read("test.txt", buffer, sizeof(buffer));
+
+    if (result >= 0) {
+        io->write("SUCCESS\n");
+        io->write("    Content: ");
+        io->write(buffer);
+        io->write("\n");
+    } else {
+        io->write("FAILED\n");
+        return;
+    }
+
+    // 5. Menghapus file
+    io->write("[5] Remove file: ");
+
+    result = fs::remove("test.txt");
+
+    if (result == FS_OK) {
+        io->write("SUCCESS\n");
+    } else {
+        io->write("FAILED\n");
+        return;
+    }
+
+    // Memastikan file sudah terhapus
+if (fs::find("test.txt") == nullptr) {
+    io->write("[6] Verify deletion: SUCCESS\n");
+} else {
+    io->write("[6] Verify deletion: FAILED\n");
+}
+
+io->write("=== RAMFS TEST FINISHED ===\n\n");
 }
 
 // Keluar dari shell
@@ -252,6 +468,13 @@ void shell_execute_command(
     ) {
         demo_sem();
     }
+        // FILESYSTEM
+    else if (
+        command_length == 2 &&
+        command_matches(command, command_length, "fs")
+    ) {
+        command_fs(io);
+    }
 
     // TRACE
     else if (
@@ -267,6 +490,42 @@ void shell_execute_command(
         command_matches(command, command_length, "args")
     ) {
         command_args(input, io);
+    }
+
+        // WAREHOUSE
+    else if (
+        command_length == 6 &&
+        command_matches(command, command_length, "tambah")
+    ) {
+        command_tambah(input, io);
+    }
+
+    else if (
+        command_length == 6 &&
+        command_matches(command, command_length, "daftar")
+    ) {
+        command_daftar(io);
+    }
+
+    else if (
+        command_length == 4 &&
+        command_matches(command, command_length, "cari")
+    ) {
+        command_cari(input, io);
+    }
+
+    else if (
+        command_length == 4 &&
+        command_matches(command, command_length, "stok")
+    ) {
+        command_stok(input, io);
+    }
+
+    else if (
+        command_length == 5 &&
+        command_matches(command, command_length, "hapus")
+    ) {
+        command_hapus(input, io);
     }
 
     // COMMAND NOT FOUND

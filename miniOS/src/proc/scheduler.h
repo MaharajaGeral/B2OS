@@ -6,6 +6,8 @@ const u32 QUANTUM = 5;            // jatah per giliran: 5 tick = 50 ms
 
 void    init();                   // thread 0 = shell, thread 1 = idle
 Thread* create(const char* name, ThreadEntry fn, void* arg);
+Thread* create_system(const char* name, ThreadEntry fn, void* arg); // thread latar: tidak ikut user_threads_alive() dan trace
+void    join(Thread* t);          // tunggu sampai thread t berstatus TERMINATED
 Thread* current();
 void    tick();                   // dipanggil timer setiap interrupt
 void    yield();                  // serahkan CPU secara sukarela
