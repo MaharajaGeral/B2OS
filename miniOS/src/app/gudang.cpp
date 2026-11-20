@@ -464,11 +464,9 @@ void auditor_main(void*) {
     for (int i = 0; i < FS_MAX_FILES; i++) g_lapor[i].dipakai = false;
     for (;;) {
         sched::sleep_ms(5000);
-        syslog::log("APP", "auditor menunggu mutex inventaris");
         mutex_lock(&g_mutex);
         audit_sekali();
         mutex_unlock(&g_mutex);
-        syslog::log("APP", "auditor selesai memeriksa stok");
     }
 }
 Thread* buat_thread_sistem(const char* nama, ThreadEntry fn) {
