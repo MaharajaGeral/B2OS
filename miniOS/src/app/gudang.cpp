@@ -388,7 +388,9 @@ int jalankan(Tugas* t) {
         return FS_ENOMEM;
     }
 
-        sched::join(p);
+    sched::join(p);
+    return t->hasil;
+}
 
 // ---------- Tahap 3: auditor stok (thread latar) ----------
 const u32 STOK_MENIPIS = 5;     // peringatan bila stok di bawah angka ini
@@ -469,12 +471,10 @@ void auditor_main(void*) {
         syslog::log("APP", "auditor selesai memeriksa stok");
     }
 }
-
-// Thread latar (is_system = true: tidak dihitung user_threads_alive, tidak muncul di trace).
-// Sementara memakai thread::alloc langsung; ganti ke sched::create_system bila sudah ada.
 Thread* buat_thread_sistem(const char* nama, ThreadEntry fn) {
+    return sched::create_system(nama, fn, nullptr);
 
-}    return sched::create_system(nama, fn, nullptr);
+}    
 // ---------- akhir auditor ----------
 }  // namespace
 
