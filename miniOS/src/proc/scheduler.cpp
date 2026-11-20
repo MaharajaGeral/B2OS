@@ -28,6 +28,18 @@ void sched::init() {
 Thread* sched::create(const char* name, ThreadEntry fn, void* arg) {
     return thread::alloc(name, fn, arg, false);
 }
+
+// Thread latar (auditor, pencatat, dll.): is_system = true supaya user_threads_alive()
+// tetap bisa mencapai 0 dan perubahan statusnya tidak membanjiri trace.
+Thread* sched::create_system(const char* name, ThreadEntry fn, void* arg) {
+    return thread::alloc(name, fn, arg, true);
+}
+
+// Menunggu sampai thread t selesai. Thread lain tetap berjalan selama kita menunggu.
+void sched::join(Thread* t) {
+    if (!t) return;
+    while (t->state != ThreadState::TERMINATED && t->state != ThreadState::UNUSED) yield();
+}
 Thread* sched::current() { return cur; }
 
 // Round Robin: cari thread READY berikutnya setelah thread yang sedang jalan.

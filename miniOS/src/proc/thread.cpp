@@ -37,7 +37,7 @@ const char* thread::state_name(ThreadState s) {
 void thread::set_state(Thread* t, ThreadState s) {
     if (trace_on && !t->is_system) {
         u32 f = irq_save();
-        kernel_print("[sched] T");
+        kernel_print("[THREAD] T");
         kernel_print_dec(t->id);
         kernel_print(" ");
         kernel_print(t->name);

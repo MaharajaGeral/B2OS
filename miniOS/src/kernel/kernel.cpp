@@ -7,6 +7,8 @@
 #include "kernel/timer.h"
 #include "kernel/cpu.h"
 #include "proc/scheduler.h"
+#include "fs/fs.h"
+#include "app/gudang.h"
 #include "shell/shell.h"
 #include "drivers/serial.h"
 #include "drivers/vga.h"
@@ -125,6 +127,12 @@ extern "C" void kernel_main(u32 magic, u32 info) {
 
     sched::init();
     kernel_print("[ OK ] Scheduler Round Robin\n");
+
+    fs::init();
+    kernel_print("[ OK ] RAMFS initialized\n");
+
+    gudang::init();
+    kernel_print("[ OK ] Gudang initialized\n");
 
     asm volatile("sti");
 
