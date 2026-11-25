@@ -3,6 +3,7 @@
 #include "shell/args.h"
 #include "fs/fs.h"
 #include "app/gudang.h"
+#include "security/access.h"
 extern "C" void shutdown_system();
 
 // Membandingkan dua string
@@ -51,6 +52,11 @@ static bool parse_u32(const char* text, u32* result) {
 }
 // Menambahkan barang ke inventaris gudang
 static void command_tambah(const char* argument, const ShellIO* io) {
+    if (access::current_uid() != access::UID_ADMIN) {
+        io->write("Akses ditolak: hanya admin yang boleh menambahkan barang.\n");
+        return;
+    }
+
     char tokens[ARGS_MAX_TOKENS][ARGS_TOKEN_SIZE];
     int count = args_split(argument, tokens);
 
@@ -102,6 +108,11 @@ static void command_cari(const char* argument, const ShellIO* io) {
 }
 // Mengubah jumlah stok barang
 static void command_stok(const char* argument, const ShellIO* io) {
+    if (access::current_uid() != access::UID_ADMIN) {
+        io->write("Akses ditolak: hanya admin yang boleh mengubah stok.\n");
+        return;
+    }
+
     char tokens[ARGS_MAX_TOKENS][ARGS_TOKEN_SIZE];
     int count = args_split(argument, tokens);
 
@@ -129,6 +140,11 @@ static void command_stok(const char* argument, const ShellIO* io) {
 }
 // Menghapus barang dari inventaris gudang
 static void command_hapus(const char* argument, const ShellIO* io) {
+    if (access::current_uid() != access::UID_ADMIN) {
+        io->write("Akses ditolak: hanya admin yang boleh menghapus barang.\n");
+        return;
+    }
+
     char tokens[ARGS_MAX_TOKENS][ARGS_TOKEN_SIZE];
     int count = args_split(argument, tokens);
 
@@ -147,6 +163,7 @@ static void command_hapus(const char* argument, const ShellIO* io) {
         io->write("Gagal menghapus barang.\n");
     }
 }
+
 // Menampilkan daftar perintah
 static void command_help(const ShellIO* io) {
     io->write(
@@ -374,7 +391,6 @@ void shell_execute_command(
     while (*input == ' ' || *input == '\t') {
         input++;
     }
-
     // HELP
     if (
         command_length == 4 &&

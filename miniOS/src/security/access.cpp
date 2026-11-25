@@ -47,15 +47,17 @@ void access::logout() {
 }
 
 bool access::allowed(Op op, u8 file_owner, u8 file_flags) {
-    if (cur_uid == UID_ADMIN) return true;                 // admin boleh semuanya
-    if (file_flags & ADMIN_ONLY) return false;             // file khusus admin
+    if (cur_uid == UID_ADMIN) return true;
+    if (file_flags & ADMIN_ONLY) return false;
+
     switch (op) {
-    case Op::READ:   return true;
-    case Op::CREATE: return true;
-    case Op::WRITE:  return file_owner == UID_USER;        // hanya miliknya sendiri
+    case Op::READ: return true;
+    case Op::CREATE: return false;
+    case Op::WRITE: return false;
     case Op::DELETE: return false;
     }
-    return false;
+
+return false;
 }
 
 // ---------- demo kriteria 8 ----------

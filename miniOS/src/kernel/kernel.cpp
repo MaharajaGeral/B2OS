@@ -8,6 +8,7 @@
 #include "kernel/cpu.h"
 #include "proc/scheduler.h"
 #include "fs/fs.h"
+#include "security/access.h"
 #include "app/gudang.h"
 #include "shell/shell.h"
 #include "drivers/serial.h"
@@ -109,6 +110,34 @@ static int io_read_line(char* buf, unsigned long cap) {
 
 static const ShellIO io = { io_write, io_read_line, io_clear };
 
+// Login sebelum pengguna masuk ke shell
+static void login_screen() {
+    char username[32];
+    char password[32];
+
+    for (;;) {
+        kernel_print("\n");
+        kernel_print("================================\n");
+        kernel_print("           B2OS LOGIN\n");
+        kernel_print("================================\n");
+
+        kernel_print("Username: ");
+        io_read_line(username, sizeof(username));
+
+        kernel_print("Password: ");
+        io_read_line(password, sizeof(password));
+
+        if (access::login(username, password)) {
+            kernel_print("\nLogin berhasil. Selamat datang, ");
+            kernel_print(access::current_name());
+            kernel_print("!\n");
+            return;
+        }
+
+        kernel_print("\nLogin gagal. Silakan coba lagi.\n");
+    }
+}
+
 extern "C" void kernel_main(u32 magic, u32 info) {
     (void)magic;
     (void)info;
@@ -128,6 +157,10 @@ extern "C" void kernel_main(u32 magic, u32 info) {
     sched::init();
     kernel_print("[ OK ] Scheduler Round Robin\n");
 
+    access::init();
+    kernel_print("[ OK ] Access Control initialized\n");
+
+
     fs::init();
     kernel_print("[ OK ] RAMFS initialized\n");
 
@@ -135,6 +168,8 @@ extern "C" void kernel_main(u32 magic, u32 info) {
     kernel_print("[ OK ] Gudang initialized\n");
 
     asm volatile("sti");
+
+    login_screen();
 
     shell_run(&io);
 

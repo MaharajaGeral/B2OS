@@ -3,6 +3,7 @@
 #include "mem/kmalloc.h"
 #include "kernel/cpu.h"
 #include "kernel/kernel.h"
+#include "security/access.h"
 
 static FsFile files[FS_MAX_FILES];
 static bool initialized = false;
@@ -88,6 +89,9 @@ void init() {
 
 // Membuat file baru
 int create(const char* name, const char* content) {
+    if (!access::allowed(Op::CREATE, access::current_uid(), 0)) {
+        return FS_EPERM;
+    }
     if (!valid_name(name)) return FS_EINVAL;
     if (!initialized) init();
 
@@ -118,7 +122,7 @@ int create(const char* name, const char* content) {
 
     files[slot].used = true;
     str_copy(files[slot].name, name, FS_NAME_MAX);
-    files[slot].owner = 0;
+    files[slot].owner = access::current_uid();
     files[slot].flags = 0;
     files[slot].data = data;
     files[slot].size = size;
@@ -143,6 +147,10 @@ int read(const char* name, char* out, u32 out_cap) {
     }
 
     FsFile* file = &files[idx];
+    if (!access::allowed(Op::READ, file->owner, file->flags)) {
+    irq_restore(f);
+    return FS_EPERM;
+}
 
     // Buffer harus cukup untuk data dan null terminator
     if (out_cap <= file->size) {
@@ -180,6 +188,12 @@ int write(const char* name, const char* content) {
         return FS_ENOENT;
     }
 
+    if (!access::allowed(Op::WRITE, files[idx].owner, files[idx].flags)) {
+    irq_restore(f);
+    kfree(new_data);
+    return FS_EPERM;
+    }
+
     // Ganti data lama dengan data baru
     char* old_data = files[idx].data;
 
@@ -203,6 +217,11 @@ int remove(const char* name) {
     if (idx < 0) {
         irq_restore(f);
         return FS_ENOENT;
+    }
+
+    if (!access::allowed(Op::DELETE, files[idx].owner, files[idx].flags)) {
+    irq_restore(f);
+    return FS_EPERM;
     }
 
     if (files[idx].data) {
