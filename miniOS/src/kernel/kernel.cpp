@@ -10,6 +10,7 @@
 #include "fs/fs.h"
 #include "security/access.h"
 #include "app/gudang.h"
+#include "monitor/monitor.h"
 #include "shell/shell.h"
 #include "drivers/serial.h"
 #include "drivers/vga.h"
@@ -166,6 +167,7 @@ extern "C" void kernel_main(u32 magic, u32 info) {
 
     gudang::init();
     kernel_print("[ OK ] Gudang initialized\n");
+    monitor::init();
 
     asm volatile("sti");
 

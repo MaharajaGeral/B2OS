@@ -1,6 +1,7 @@
 // TCB + status thread New/Ready/Running/Waiting/Terminated (kriteria 2)
 // Pengelolaan thread: tabel TCB, stack, dan status thread.
 #include "proc/thread.h"
+#include "monitor/monitor.h"
 #include "proc/scheduler.h"
 #include "kernel/cpu.h"
 #include "kernel/kernel.h"
@@ -35,6 +36,7 @@ const char* thread::state_name(ThreadState s) {
 
 // Ubah status thread. Kalau trace aktif, perubahan dicetak ke layar.
 void thread::set_state(Thread* t, ThreadState s) {
+    monitor::thread_state(t, s);
     if (trace_on && !t->is_system) {
         u32 f = irq_save();
         kernel_print("[THREAD] T");

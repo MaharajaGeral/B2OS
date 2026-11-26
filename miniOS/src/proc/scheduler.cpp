@@ -1,5 +1,6 @@
 // Scheduler Round Robin preemptive.
 #include "proc/scheduler.h"
+#include "monitor/monitor.h"
 #include "kernel/cpu.h"
 #include "kernel/timer.h"
 #include "kernel/kernel.h"
@@ -60,6 +61,7 @@ static void schedule() {
     Thread* next = pick_next(old);
     quantum_left = sched::QUANTUM;
     if (next == old) return;
+    monitor::context_switch(old, next);
     if (old->state == ThreadState::RUNNING) thread::set_state(old, ThreadState::READY);
     thread::set_state(next, ThreadState::RUNNING);
     cur = next;
