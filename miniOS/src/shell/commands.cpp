@@ -165,28 +165,52 @@ static void command_hapus(const char* argument, const ShellIO* io) {
 }
 
 // Menampilkan daftar perintah
+// Menampilkan daftar perintah B2OS
 static void command_help(const ShellIO* io) {
     io->write(
-        "\nAvailable Commands:\n"
-        "  help     - Show available commands\n"
-        "  clear    - Clear terminal screen\n"
-        "  about    - Information about B2OS\n"
-        "  version  - Show OS version\n"
-        "  echo     - Display a message\n"
-        "  ps       - Show thread list and states\n"
-        "  thread   - Demo 2 threads and state changes\n"
-        "  sched    - Demo preemptive scheduling\n"
-        "  race     - Demo race condition vs mutex\n"
-        "  sem      - Demo semaphore (2 slots, 4 threads)\n"
-        "  exit     - Exit the shell\n"
-        "  fs       - Test RAM filesystem operations\n"
-        "  tambah   - Add warehouse item (name stock rack)\n"
-        "  daftar   - Show warehouse inventory\n"
-        "  cari     - Search warehouse item\n"
-        "  stok     - Update item stock\n"
-        "  hapus    - Delete warehouse item\n"
-        "  deadlock - Demo deadlock and lock ordering\n"
         "\n"
+        "========================================\n"
+        "             B2OS COMMANDS\n"
+        "========================================\n"
+
+        "\n[ GENERAL COMMANDS ]\n"
+        "  help       - Menampilkan daftar perintah\n"
+        "  clear      - Membersihkan layar terminal\n"
+        "  about      - Menampilkan informasi B2OS\n"
+        "  version    - Menampilkan versi sistem\n"
+        "  echo       - Menampilkan teks\n"
+        "  exit       - Mematikan sistem B2OS\n"
+
+        "\n[ SYSTEM & PROCESS ]\n"
+        "  ps         - Menampilkan daftar thread\n"
+        "  thread     - Demo pembuatan dan status thread\n"
+        "  sched      - Demo penjadwalan Round Robin\n"
+        "  race       - Demo race condition dan mutex\n"
+        "  sem        - Demo penggunaan semaphore\n"
+        "  deadlock   - Demo deadlock dan lock ordering\n"
+        "  trace      - Mengaktifkan atau menonaktifkan log thread\n"
+        "               Penggunaan: trace on|off\n"
+
+        "\n[ FILESYSTEM ]\n"
+        "  fs         - Menguji operasi RAMFS\n"
+
+        "\n[ WAREHOUSE MANAGEMENT ]\n"
+        "  tambah     - Menambahkan barang ke gudang\n"
+        "               Penggunaan: tambah <nama> <stok> <rak>\n"
+        "  daftar     - Menampilkan seluruh barang\n"
+        "  cari       - Mencari barang berdasarkan nama\n"
+        "               Penggunaan: cari <nama>\n"
+        "  stok       - Mengubah jumlah stok barang\n"
+        "               Penggunaan: stok <nama> <jumlah_baru>\n"
+        "  hapus      - Menghapus barang dari gudang\n"
+        "               Penggunaan: hapus <nama>\n"
+
+        "\n[ DEBUG & DEVELOPMENT ]\n"
+        "  args       - Menguji pemisahan argumen perintah\n"
+
+        "\n========================================\n"
+        "  Ketik nama perintah untuk menjalankan.\n"
+        "========================================\n\n"
     );
 }
 
