@@ -173,7 +173,7 @@ static void command_help(const ShellIO* io) {
         "  about    - Information about B2OS\n"
         "  version  - Show OS version\n"
         "  echo     - Display a message\n"
-        "  ps          - Show thread list and states\n"
+        "  ps       - Show thread list and states\n"
         "  thread   - Demo 2 threads and state changes\n"
         "  sched    - Demo preemptive scheduling\n"
         "  race     - Demo race condition vs mutex\n"
