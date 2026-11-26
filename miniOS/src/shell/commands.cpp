@@ -185,6 +185,7 @@ static void command_help(const ShellIO* io) {
         "  cari     - Search warehouse item\n"
         "  stok     - Update item stock\n"
         "  hapus    - Delete warehouse item\n"
+        "  deadlock - Demo deadlock and lock ordering\n"
         "\n"
     );
 }
@@ -483,6 +484,13 @@ void shell_execute_command(
         command_matches(command, command_length, "sem")
     ) {
         demo_sem();
+    }
+    // DEADLOCK
+    else if (
+        command_length == 8 &&
+        command_matches(command, command_length, "deadlock")
+    ) {
+        demo_deadlock();
     }
         // FILESYSTEM
     else if (

@@ -1,5 +1,4 @@
 #pragma once
-#pragma once
 #include "kernel/types.h"
 
 enum class ThreadState : u8 { UNUSED, NEW, READY, RUNNING, WAITING, TERMINATED };

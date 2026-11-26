@@ -5,6 +5,7 @@ void demo_thread();         // 2 thread, tugas berbeda, perubahan status terceta
 void demo_sched();          // 2 thread CPU-bound, bergantian karena timer
 void demo_race();           // kriteria 4: shared counter tanpa dan dengan mutex
 void demo_sem();            // kriteria 4: semaphore membatasi thread yang masuk
+void demo_deadlock();       // Deadlock simulation dan lock ordering
 void show_threads();        // perintah 'ps'
 void trace_enable(bool on); // perintah 'trace on|off'
 bool trace_enabled();
