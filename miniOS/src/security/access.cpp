@@ -1,3 +1,4 @@
+#include "monitor/monitor.h"
 // Hak akses sederhana: pengguna "admin" dan "user" + kebijakan izin per operasi.
 //
 //   admin : boleh semua operasi pada semua file
@@ -30,20 +31,24 @@ bool access::login(const char* name, const char* password) {
     if (same(name, "admin") && same(password, ADMIN_PASS)) {
         cur_uid = UID_ADMIN;
         syslog::log_s("AKSES", "login berhasil:", "admin");
+        monitor::access_event("login admin");
         return true;
     }
     if (same(name, "user") && same(password, USER_PASS)) {
         cur_uid = UID_USER;
         syslog::log_s("AKSES", "login berhasil:", "user");
+        monitor::access_event("login user");
         return true;
     }
     syslog::log_s("AKSES", "login GAGAL untuk", name);
+    monitor::access_event("login GAGAL");
     return false;
 }
 
 void access::logout() {
     cur_uid = UID_USER;
     syslog::log("AKSES", "logout, kembali menjadi user");
+    monitor::access_event("logout");
 }
 
 bool access::allowed(Op op, u8 file_owner, u8 file_flags) {

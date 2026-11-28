@@ -1,3 +1,4 @@
+#include "monitor/monitor.h"
 // Alokator memori dinamis: first-fit dengan pemecahan blok (split) dan penggabungan (coalesce).
 //
 // Heap = array statis. Tiap blok diawali header berisi ukuran, status, dan penunjuk ke blok
@@ -51,10 +52,12 @@ void* kmalloc(usize n) {
         }
         b->magic = MAGIC_USED;
         n_alloc_ok++;
+        monitor::mem_alloc((u32)n);
         irq_restore(f);
         return payload(b);
     }
 
+    monitor::mem_fail((u32)n);
     n_alloc_fail++;                                    // tidak ada blok cukup: Out of Memory
     irq_restore(f);
     return nullptr;                                    // gagal dengan aman, kernel tidak crash
@@ -70,12 +73,14 @@ void kfree(void* p) {
     Block* b = in_range ? (Block*)(ptr - HDR) : nullptr;
     if (!b || b->magic != MAGIC_USED) {                // pointer salah / double free -> tolak
         n_free_bad++;
+        monitor::mem_bad();
         irq_restore(f);
         return;
     }
 
     b->magic = MAGIC_FREE;
     n_free_ok++;
+    monitor::mem_free((u32)b->size);
 
     // Gabungkan blok bebas yang bersebelahan agar tidak terjadi fragmentasi.
     for (Block* c = head; c; c = c->next) {

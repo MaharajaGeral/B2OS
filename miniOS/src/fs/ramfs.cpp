@@ -1,3 +1,4 @@
+#include "monitor/monitor.h"
 // ramfs.cpp - Filesystem sederhana berbasis memori (RAMFS)
 #include "fs/fs.h"
 #include "mem/kmalloc.h"
@@ -89,8 +90,9 @@ void init() {
 
 // Membuat file baru
 int create(const char* name, const char* content) {
+    monitor::fs_event("create", name);
     if (!access::allowed(Op::CREATE, access::current_uid(), 0)) {
-        return FS_EPERM;
+        { monitor::access_denied(); return FS_EPERM; }
     }
     if (!valid_name(name)) return FS_EINVAL;
     if (!initialized) init();
@@ -133,6 +135,7 @@ int create(const char* name, const char* content) {
 
 // Membaca isi file
 int read(const char* name, char* out, u32 out_cap) {
+    monitor::fs_event("read", name);
     if (!valid_name(name) || !out || out_cap == 0)
         return FS_EINVAL;
 
@@ -149,7 +152,7 @@ int read(const char* name, char* out, u32 out_cap) {
     FsFile* file = &files[idx];
     if (!access::allowed(Op::READ, file->owner, file->flags)) {
     irq_restore(f);
-    return FS_EPERM;
+    { monitor::access_denied(); return FS_EPERM; }
 }
 
     // Buffer harus cukup untuk data dan null terminator
@@ -167,6 +170,7 @@ int read(const char* name, char* out, u32 out_cap) {
 
 // Mengganti isi file
 int write(const char* name, const char* content) {
+    monitor::fs_event("write", name);
     if (!valid_name(name)) return FS_EINVAL;
     if (!initialized) init();
     if (!content) content = "";
@@ -191,7 +195,7 @@ int write(const char* name, const char* content) {
     if (!access::allowed(Op::WRITE, files[idx].owner, files[idx].flags)) {
     irq_restore(f);
     kfree(new_data);
-    return FS_EPERM;
+    { monitor::access_denied(); return FS_EPERM; }
     }
 
     // Ganti data lama dengan data baru
@@ -208,6 +212,7 @@ int write(const char* name, const char* content) {
 
 // Menghapus file
 int remove(const char* name) {
+    monitor::fs_event("remove", name);
     if (!valid_name(name)) return FS_EINVAL;
     if (!initialized) init();
 
@@ -221,7 +226,7 @@ int remove(const char* name) {
 
     if (!access::allowed(Op::DELETE, files[idx].owner, files[idx].flags)) {
     irq_restore(f);
-    return FS_EPERM;
+    { monitor::access_denied(); return FS_EPERM; }
     }
 
     if (files[idx].data) {

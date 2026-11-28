@@ -17,6 +17,16 @@ char    last[KINDS][TEXT_MAX + 1];   // event terbaru tiap jenis
 bool    dirty = false;               // ada teks yang berubah
 bool    wake  = false;               // ada event yang boleh memunculkan/memperpanjang kotak
 Thread* self  = nullptr;             // thread monitor sendiri
+bool    ready = false;               // true setelah monitor::init selesai
+
+// Event memori/ramfs/akses dicatat dari thread biasa dan shell (id 0). Thread latar dan monitor diabaikan.
+bool relevant() {
+    if (!ready) return false;
+    Thread* c = sched::current();
+    if (!c || c == self) return false;
+    if (c->is_system && c->id != 0) return false;
+    return true;
+}
 
 void put(char* d, int& n, const char* s) {
     while (*s && n < TEXT_MAX) d[n++] = *s++;
@@ -114,6 +124,7 @@ namespace monitor {
 
 void init() {
     self = sched::create_system("monitor", monitor_main, nullptr);
+    ready = true;
 }
 
 void thread_state(const Thread* t, ThreadState s) {
@@ -139,6 +150,49 @@ void context_switch(const Thread* from, const Thread* to) {
     put(buf, n, to->name);
     buf[n] = '\0';
     commit(K_SWITCH, buf, false);   // hanya memperbarui baris, tidak memunculkan kotak
+}
+
+void mem_alloc(u32 n) {
+    if (!relevant()) return;
+    char b[TEXT_MAX + 1]; int k = 0;
+    put(b, k, "alloc "); put_u32(b, k, n); put(b, k, " B"); b[k] = '\0';
+    commit(K_MEM, b, true);
+}
+
+void mem_free(u32 n) {
+    if (!relevant()) return;
+    char b[TEXT_MAX + 1]; int k = 0;
+    put(b, k, "free "); put_u32(b, k, n); put(b, k, " B"); b[k] = '\0';
+    commit(K_MEM, b, true);
+}
+
+void mem_fail(u32 n) {
+    if (!relevant()) return;
+    char b[TEXT_MAX + 1]; int k = 0;
+    put(b, k, "GAGAL alloc "); put_u32(b, k, n); b[k] = '\0';
+    commit(K_MEM, b, true);
+}
+
+void mem_bad() {
+    if (!relevant()) return;
+    commit(K_MEM, "free DITOLAK", true);
+}
+
+void fs_event(const char* op, const char* name) {
+    if (!relevant()) return;
+    char b[TEXT_MAX + 1]; int k = 0;
+    put(b, k, op); put(b, k, " "); put(b, k, name); b[k] = '\0';
+    commit(K_FS, b, true);
+}
+
+void access_event(const char* what) {
+    if (!relevant()) return;
+    commit(K_ACCESS, what, true);
+}
+
+void access_denied() {
+    if (!relevant()) return;
+    commit(K_ACCESS, "DITOLAK", true);
 }
 
 }  // namespace monitor
